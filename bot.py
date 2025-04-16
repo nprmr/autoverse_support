@@ -23,7 +23,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    await update.message.reply_text(f"🆔 chat_id: `{chat_id}`", parse_mode="Markdown")
+    await update.message.reply_text(f"🆔 chat_id: {chat_id}")  # убрали parse_mode
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("Получено сообщение:", update)
@@ -56,8 +56,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if MODERATOR_CHAT_ID:
             try:
                 message = (
-                    f"📬 Новое обращение от @{username or 'пользователя'}\n\n"
-                    f"{user_message}\n\n🕒 {timestamp}"
+                    f"📬 Новое обращение от @{username or 'пользователя'}
+
+"
+                    f"{user_message}
+
+🕒 {timestamp}"
                 )
                 await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message)
                 print("📤 Уведомление модератору отправлено")
