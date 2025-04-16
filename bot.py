@@ -56,12 +56,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if MODERATOR_CHAT_ID:
             try:
                 message = (
-                    f"📬 Новое обращение от @{username or 'пользователя'}
-
-"
-                    f"{user_message}
-
-🕒 {timestamp}"
+                    f"📬 Новое обращение от @{username or 'пользователя'}\n\n"
+                    f"{user_message}\n\n🕒 {timestamp}"
                 )
                 await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message)
                 print("📤 Уведомление модератору отправлено")
@@ -75,6 +71,6 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("getid", get_chat_id))
-    app.add_handler(MessageHandler(filters.ALL, handle_message))  # ловим всё
+    app.add_handler(MessageHandler(filters.ALL, handle_message))
     print("🟢 Бот запущен и готов к приёму сообщений")
     app.run_polling()
