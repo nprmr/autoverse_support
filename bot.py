@@ -8,7 +8,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 
 from responses import get_auto_reply
 
-TOKEN = os.environ.get("8011188480:AAHr2a7wYxhA8JPMtm3Eh6QSklBF6hgwt94")
+TOKEN = os.environ.get("TOKEN")
 gspread_key = json.loads(os.environ.get("GSPREAD_JSON"))
 
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
