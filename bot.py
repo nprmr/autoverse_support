@@ -26,9 +26,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_message)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("chat_id:", update.effective_chat.id)
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
     username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
