@@ -8,7 +8,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 
 from responses import get_auto_reply
 
-TOKEN = os.environ.get("TOKEN")
+TOKEN = os.environ.get("8011188480:AAHr2a7wYxhA8JPMtm3Eh6QSklBF6hgwt94")
 gspread_key = json.loads(os.environ.get("GSPREAD_JSON"))
 
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -24,7 +24,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "оставьте ваше сообщение!"
     )
     await update.message.reply_text(welcome_message)
-
+    
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("chat_id:", update.effective_chat.id)
+    
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
