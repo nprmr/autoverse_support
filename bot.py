@@ -6,18 +6,15 @@ from oauth2client.service_account import ServiceAccountCredentials
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
-# Получаем токен из переменной окружения
-TOKEN = os.environ.get("TOKEN")
+from responses import get_auto_reply
 
-# Получаем ключ Google Sheets из переменной окружения и подгружаем его как dict
+TOKEN = os.environ.get("TOKEN")
 gspread_key = json.loads(os.environ.get("GSPREAD_JSON"))
 
-# Авторизация Google Sheets
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 creds = ServiceAccountCredentials.from_json_keyfile_dict(gspread_key, scope)
 client = gspread.authorize(creds)
 
-# Название таблицы
 sheet = client.open("AutoVerse Support Tickets").sheet1
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,11 +32,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Добавляем строку в Google Таблицу
     sheet.append_row([str(user_id), username, user_message, timestamp])
 
-    # Ответ пользователю
-    await update.message.reply_text("Мы получили ваше обращение и свяжемся с вами в ближайшее время!")
+    auto_reply = get_auto_reply(user_message)
+    await update.message.reply_text(auto_reply)
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
