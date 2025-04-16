@@ -19,45 +19,62 @@ client = gspread.authorize(creds)
 sheet = client.open("AutoVerse Support Tickets").sheet1
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_message = (
-        "Привет, мы команда службы поддержки AutoVerse. "
-        "Если вы столкнулись с проблемой или хотите предложить улучшения нашего продукта — "
-        "оставьте ваше сообщение!"
-    )
-    await update.message.reply_text(welcome_message)
+    await update.message.reply_text("Бот работает. Напиши сообщение.")
 
 async def get_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await update.message.reply_text(f"🆔 chat_id: `{chat_id}`", parse_mode="Markdown")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
-    user_id = user.id
-    username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
-    user_message = update.message.text
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print("Получено сообщение:", update)
+    
+    if not update.message:
+        print("❗ update.message отсутствует")
+        return
 
-    sheet.append_row([str(user_id), username, user_message, timestamp])
+    try:
+        user = update.message.from_user
+        user_id = user.id
+        username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
+        user_message = update.message.text
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    auto_reply = get_auto_reply(user_message)
-    await update.message.reply_text(auto_reply)
+        print(f"От {username} ({user_id}): {user_message}")
 
-    if MODERATOR_CHAT_ID:
-        message = (
-            f"📬 Новое обращение от @{username or 'пользователя'}
+        try:
+            sheet.append_row([str(user_id), username, user_message, timestamp])
+            print("✅ Сохранено в Google Таблицу")
+        except Exception as e:
+            print(f"❌ Ошибка при сохранении в таблицу: {e}")
+
+        try:
+            auto_reply = get_auto_reply(user_message)
+            await update.message.reply_text(auto_reply)
+        except Exception as e:
+            print(f"❌ Ошибка при автоответе: {e}")
+
+        if MODERATOR_CHAT_ID:
+            try:
+                message = (
+                    f"📬 Новое обращение от @{username or 'пользователя'}
 
 "
-            f"{user_message}
+                    f"{user_message}
 
 🕒 {timestamp}"
-        )
-        await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message)
+                )
+                await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message)
+                print("📤 Уведомление модератору отправлено")
+            except Exception as e:
+                print(f"❌ Ошибка при отправке уведомления модератору: {e}")
+
+    except Exception as e:
+        print(f"❌ Общая ошибка в обработке сообщения: {e}")
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("getid", get_chat_id))  # новая команда
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Бот запущен...")
+    app.add_handler(CommandHandler("getid", get_chat_id))
+    app.add_handler(MessageHandler(filters.ALL, handle_message))  # ловим всё
+    print("🟢 Бот запущен и готов к приёму сообщений")
     app.run_polling()
-
