@@ -15,7 +15,8 @@ TOPICS_FILE = "topics.json"
 # Загружаем сохранённые топики
 if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r") as f:
-        TOPICS = json.load(f)
+        raw_topics = json.load(f)
+    TOPICS = {k.strip().lower().replace(' ', '_'): v for k, v in raw_topics.items()}
 else:
     TOPICS = {}
 
@@ -29,7 +30,8 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Использование: /settopics <название>")
         return
     name = context.args[0].lower()
-    TOPICS[name] = update.message.message_thread_id
+    key = name.strip().lower().replace(" ", "_")
+    TOPICS[key] = update.message.message_thread_id
     with open(TOPICS_FILE, "w") as f:
         json.dump(TOPICS, f)
     await update.message.reply_text(f'✅ Топик "{name}" сохранён. ID: {TOPICS[name]}')
@@ -65,6 +67,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     thread_id = TOPICS.get("новые")
+    print("➡️ Отправляем тикет в топик новые:", thread_id)
     if thread_id:
         msg = f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n{user_message}\n\n🕒 {timestamp}</pre>"
         await context.bot.send_message(
@@ -96,7 +99,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
 
-            thread_id = TOPICS.get(status.lower())
+            key = status.strip().lower().replace(" ", "_")
+            thread_id = TOPICS.get(key)
+            print("STATUS:", key, "| THREAD_ID:", thread_id, "| TOPICS:", TOPICS)
             if thread_id:
                 text = f"📌 Обращение #{row_index}\nСтатус: {status}"
                 keyboard = [[
@@ -119,6 +124,7 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         report = generate_daily_report()
         thread_id = TOPICS.get("отчеты")
+        print("📊 Отчет пойдет в топик:", thread_id)
         if thread_id:
             await context.bot.send_message(chat_id=MODERATOR_CHAT_ID, message_thread_id=thread_id, text=report)
         else:
