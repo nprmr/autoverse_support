@@ -1,113 +1,38 @@
-import os
 import json
+import os
+from collections import Counter
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler, CallbackQueryHandler
+from utils.sheets import get_sheet
 
-from responses import get_auto_reply
-from utils.sheets import append_ticket, update_status
-from utils.stats import generate_daily_report
+def generate_daily_report():
+    sheet = get_sheet()
+    data = sheet.get_all_values()[1:]  # пропускаем заголовки
 
-TOKEN = os.environ.get("TOKEN")
-MODERATOR_CHAT_ID = os.environ.get("MODERATOR_CHAT_ID")
+    today = datetime.now().strftime("%Y-%m-%d")
+    today_rows = [row for row in data if row[3].startswith(today)]
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_message = (
-        "Привет, мы команда службы поддержки AutoVerse. "
-        "Если вы столкнулись с проблемой или хотите предложить улучшения нашего продукта — "
-        "оставьте ваше сообщение!"
-    )
-    await update.message.reply_text(welcome_message)
+    total = len(today_rows)
+    statuses = Counter(row[4].strip().lower() for row in today_rows if len(row) > 4)
+    users = Counter(row[1].strip() if row[1].strip() else "без имени" for row in today_rows)
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or update.message.text is None:
-        return
+    report_lines = []
+    report_lines.append(f"📊 Отчёт за {today}:")
+    report_lines.append(f"Всего обращений: {total}")
+    report_lines.append("Статусы:")
 
-    if update.message.text.strip().startswith("/"):
-        return
+    emoji_map = {
+        "новое": "🟢",
+        "в работу": "🛠",
+        "готово": "✅",
+        "отклонено": "❌"
+    }
 
-    user = update.message.from_user
-    user_id = user.id
-    username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
-    user_message = update.message.text
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for status, count in statuses.items():
+        emoji = emoji_map.get(status, "📌")
+        report_lines.append(f"{emoji} {status}: {count}")
 
-    row_index = append_ticket(user_id, username, user_message, timestamp)
-    auto_reply = get_auto_reply(user_message)
-    await update.message.reply_text(auto_reply)
+    report_lines.append("Топ авторы:")
+    for i, (user, count) in enumerate(users.most_common(3), 1):
+        report_lines.append(f"{i}. {user} — {count}")
 
-    keyboard = [
-        [
-            InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}"),
-            InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
-            InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    if MODERATOR_CHAT_ID:
-        message = f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n{user_message}\n\n🕒 {timestamp}</pre>"
-        await context.bot.send_message(
-            chat_id=int(MODERATOR_CHAT_ID),
-            text=message,
-            parse_mode="HTML",
-            reply_markup=reply_markup
-        )
-
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    try:
-        _, status, row = query.data.split(":")
-        row_index = int(row)
-        update_status(row_index, status)
-
-        if status == "в работу":
-            keyboard = [
-                [
-                    InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
-                    InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-                ]
-            ]
-            await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
-            await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
-        else:
-            await query.edit_message_reply_markup(None)
-            await query.message.reply_text(f"✅ Статус обновлён: {status}")
-    except Exception as e:
-        await query.message.reply_text(f"Ошибка при обновлении статуса: {e}")
-
-async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        report = generate_daily_report()
-        await update.message.reply_text(report)
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при формировании отчёта: {e}")
-
-
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-
-    try:
-        args = context.args
-        if len(args) < 2:
-            await update.message.reply_text("Usage: /reply <user_id> <message>")
-            return
-
-        user_id = int(args[0])
-        text = " ".join(args[1:])
-        await context.bot.send_message(chat_id=user_id, text=text)
-        await update.message.reply_text("✅ Message sent.")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Error: {e}")
-
-
-if __name__ == '__main__':
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("отчет", report))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    app.run_polling()
+    return "\n".join(report_lines)
