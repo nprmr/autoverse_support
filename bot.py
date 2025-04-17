@@ -102,17 +102,17 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
 
-import asyncio
-
-async def main():
+if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
-    await app.bot.delete_webhook(drop_pending_updates=True)
+
+    # Сброс предыдущего getUpdates соединения
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    await app.run_polling()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+    app.run_polling()
