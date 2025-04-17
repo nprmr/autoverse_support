@@ -60,27 +60,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     try:
-        if query.data.startswith("status:"):
-            _, status, row = query.data.split(":")
-            row_index = int(row)
-            user_id = update.callback_query.from_user.id
+        data = query.data
+
+        if data.startswith("status:"):
+            parts = data.split(":")
+            status = parts[1]
+            row_index = int(parts[2])
+            user_id = parts[3] if len(parts) > 3 else None
+
             update_status(row_index, status)
 
             if status == "в работу":
-            user_id = query.data.split(":")[3] if len(query.data.split(":")) > 3 else update.effective_user.id
-                keyboard = [[
+                keyboard = [
+                    [
                         InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
                         InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-                        InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
-                    ]]
+                    ]
+                ]
+                if user_id:
+                    keyboard[0].append(InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}"))
+
                 await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
                 await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
             else:
                 await query.edit_message_reply_markup(None)
                 await query.message.reply_text(f"✅ Статус обновлён: {status}")
 
-        elif query.data.startswith("replyto:"):
-            user_id = query.data.split(":")[1]
+        elif data.startswith("replyto:"):
+            user_id = data.split(":")[1]
             await query.message.reply_text(f"/reply {user_id} ")
 
     except Exception as e:
