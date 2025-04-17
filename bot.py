@@ -41,6 +41,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}"),
             InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
             InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+            InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -59,24 +60,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     try:
-        _, status, row = query.data.split(":")
-        row_index = int(row)
-        update_status(row_index, status)
+        if query.data.startswith("status:"):
+            _, status, row = query.data.split(":")
+            row_index = int(row)
+            update_status(row_index, status)
 
-        if status == "в работу":
-            keyboard = [
-                [
-                    InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
-                    InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+            if status == "в работу":
+                keyboard = [
+                    [
+                        InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
+                        InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+                    ]
                 ]
-            ]
-            await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
-            await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
-        else:
-            await query.edit_message_reply_markup(None)
-            await query.message.reply_text(f"✅ Статус обновлён: {status}")
+                await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+                await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
+            else:
+                await query.edit_message_reply_markup(None)
+                await query.message.reply_text(f"✅ Статус обновлён: {status}")
+
+        elif query.data.startswith("replyto:"):
+            user_id = query.data.split(":")[1]
+            await query.message.reply_text(f"/reply {user_id} ")
+
     except Exception as e:
-        await query.message.reply_text(f"Ошибка при обновлении статуса: {e}")
+        await query.message.reply_text(f"Ошибка при обработке кнопки: {e}")
 
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -105,7 +112,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Сброс предыдущего getUpdates соединения
     import asyncio
     asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
 
