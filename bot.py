@@ -46,12 +46,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Уведомляем модератора
     if MODERATOR_CHAT_ID:
         message = (
-            f"<pre>📬 Новое обращение от @{username or 'пользователя'}
-
-"
-            f"{user_message}
-
-🕒 {timestamp}</pre>"
+            f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n"
+            f"{user_message}\n\n🕒 {timestamp}</pre>"
         )
         await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message, parse_mode="HTML")
 
