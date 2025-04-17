@@ -153,6 +153,9 @@ if __name__ == '__main__':
     import asyncio
     asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
 
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
