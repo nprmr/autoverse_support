@@ -1,22 +1,14 @@
 import os
 import json
 from datetime import datetime
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler, CallbackQueryHandler
 
 from responses import get_auto_reply
+from utils.sheets import append_ticket, update_status
 
 TOKEN = os.environ.get("TOKEN")
-gspread_key = json.loads(os.environ.get("GSPREAD_JSON"))
 MODERATOR_CHAT_ID = os.environ.get("MODERATOR_CHAT_ID")
-
-scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_dict(gspread_key, scope)
-client = gspread.authorize(creds)
-
-sheet = client.open("AutoVerse Support Tickets").sheet1
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_message = (
@@ -36,23 +28,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Сохраняем в таблицу
-    sheet.append_row([str(user_id), username, user_message, timestamp, "новое"])
+    # Добавляем тикет в таблицу и получаем номер строки
+    row_index = append_ticket(user_id, username, user_message, timestamp)
 
-    # Отвечаем пользователю
+    # Ответ пользователю
     auto_reply = get_auto_reply(user_message)
     await update.message.reply_text(auto_reply)
 
-    # Уведомляем модератора
+    # Кнопки для модератора
+    keyboard = [
+        [
+            InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}"),
+            InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
+            InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Отправляем уведомление модератору
     if MODERATOR_CHAT_ID:
         message = (
-            f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n"
-            f"{user_message}\n\n🕒 {timestamp}</pre>"
+            f"<pre>📬 Новое обращение от @{username or 'пользователя'}
+
+"
+            f"{user_message}
+
+🕒 {timestamp}</pre>"
         )
-        await context.bot.send_message(chat_id=int(MODERATOR_CHAT_ID), text=message, parse_mode="HTML")
+        await context.bot.send_message(
+            chat_id=int(MODERATOR_CHAT_ID),
+            text=message,
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        _, status, row = query.data.split(":")
+        update_status(int(row), status)
+        await query.edit_message_reply_markup(None)
+        await query.message.reply_text(f"✅ Статус обновлён: {status}")
+    except Exception as e:
+        await query.message.reply_text(f"Ошибка при обновлении статуса: {e}")
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
