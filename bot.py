@@ -23,7 +23,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or update.message.text is None:
         return
 
-    # Является ли сообщение командой
     if update.message.text.strip().startswith("/"):
         return
 
