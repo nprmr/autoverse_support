@@ -85,10 +85,29 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"Ошибка при формировании отчёта: {e}")
 
+
+async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
+    try:
+        args = context.args
+        if len(args) < 2:
+            await update.message.reply_text("Usage: /reply <user_id> <message>")
+            return
+
+        user_id = int(args[0])
+        text = " ".join(args[1:])
+        await context.bot.send_message(chat_id=user_id, text=text)
+        await update.message.reply_text("✅ Message sent.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+
+
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("report", report))
+    app.add_handler(CommandHandler("отчет", report))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     app.run_polling()
