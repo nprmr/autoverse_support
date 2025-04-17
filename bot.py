@@ -107,7 +107,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("отчет", report))
+    app.add_handler(CommandHandler("report", report))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     app.run_polling()
