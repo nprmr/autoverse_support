@@ -38,7 +38,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [
-            InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}"),
+            InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
             InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
             InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
             InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
@@ -63,15 +63,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query.data.startswith("status:"):
             _, status, row = query.data.split(":")
             row_index = int(row)
+            user_id = update.callback_query.from_user.id
             update_status(row_index, status)
 
             if status == "в работу":
-                keyboard = [
-                    [
+            user_id = query.data.split(":")[3] if len(query.data.split(":")) > 3 else update.effective_user.id
+                keyboard = [[
                         InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
                         InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-                    ]
-                ]
+                        InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
+                    ]]
                 await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
                 await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
             else:
