@@ -64,22 +64,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         _, status, row = query.data.split(":")
-        row_index = int(row)
-        update_status(row_index, status)
-
-        if status == "в работу":
-            # Показываем финальные кнопки
-            keyboard = [
-                [
-                    InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
-                    InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-                ]
-            ]
-            await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
-            await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
-        else:
-            await query.edit_message_reply_markup(None)
-            await query.message.reply_text(f"✅ Статус обновлён: {status}")
+        update_status(int(row), status)
+        await query.edit_message_reply_markup(None)
+        await query.message.reply_text(f"✅ Статус обновлён: {status}")
     except Exception as e:
         await query.message.reply_text(f"Ошибка при обновлении статуса: {e}")
 
