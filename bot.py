@@ -37,7 +37,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Сохраняем в таблицу
-    sheet.append_row([str(user_id), username, user_message, timestamp])
+    sheet.append_row([str(user_id), username, user_message, timestamp, "новое"])
 
     # Отвечаем пользователю
     auto_reply = get_auto_reply(user_message)
