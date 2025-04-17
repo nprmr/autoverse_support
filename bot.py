@@ -150,20 +150,20 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 
 async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+        app = ApplicationBuilder().token(TOKEN).build()
     await app.bot.delete_webhook(drop_pending_updates=True)
-    
+
     import asyncio
-    asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-    
-    app.add_handler(CommandHandler("start", start))
+    await app.bot.delete_webhook(drop_pending_updates=True)
+
+        app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
     app.add_handler(CommandHandler("settopics", settopics))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    
-    await app.run_polling()
-    
+        app.add_handler(CallbackQueryHandler(button_callback))
+        app.add_handler(MessageHandler(filters.TEXT, handle_message))
+
+        await app.run_polling()
+
 if __name__ == "__main__":
     asyncio.run(main())
