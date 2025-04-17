@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler, CallbackQueryHandler
 
 from responses import get_auto_reply
@@ -9,15 +9,28 @@ from utils.sheets import append_ticket, update_status
 from utils.stats import generate_daily_report
 
 TOKEN = os.environ.get("TOKEN")
-MODERATOR_CHAT_ID = os.environ.get("MODERATOR_CHAT_ID")
+MODERATOR_CHAT_ID = int(os.environ.get("MODERATOR_CHAT_ID"))
+
+# Топики: названия -> thread_id (будет заполняться через /gettopics)
+TOPICS = {}
+
+async def gettopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or update.message.chat_id != MODERATOR_CHAT_ID:
+        return
+
+    forum_topics = await context.bot.get_forum_topic_list(chat_id=MODERATOR_CHAT_ID)
+    topics_list = []
+    for topic in forum_topics.topics:
+        TOPICS[topic.name.lower()] = topic.message_thread_id
+        topics_list.append(f"{topic.name}: {topic.message_thread_id}")
+    message = "\n".join(topics_list)
+    await update.message.reply_text(f"🧵 Доступные топики:\n{message}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_message = (
+    await update.message.reply_text(
         "Привет, мы команда службы поддержки AutoVerse. "
-        "Если вы столкнулись с проблемой или хотите предложить улучшения нашего продукта — "
-        "оставьте ваше сообщение!"
+        "Если вы столкнулись с проблемой или хотите предложить улучшения нашего продукта — оставьте ваше сообщение!"
     )
-    await update.message.reply_text(welcome_message)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or update.message.text is None:
@@ -46,14 +59,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if MODERATOR_CHAT_ID:
+    # Отправляем тикет в топик "новые"
+    thread_id = TOPICS.get("новые")
+    if thread_id:
         message = f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n{user_message}\n\n🕒 {timestamp}</pre>"
         await context.bot.send_message(
-            chat_id=int(MODERATOR_CHAT_ID),
+            chat_id=MODERATOR_CHAT_ID,
+            message_thread_id=thread_id,
             text=message,
             parse_mode="HTML",
             reply_markup=reply_markup
         )
+    else:
+        await update.message.reply_text("⚠️ Топик 'новые' не найден. Используй /gettopics.")
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -70,21 +88,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             update_status(row_index, status)
 
-            if status == "в работу":
+            # Удалим старое сообщение (если возможно)
+            try:
+                await query.message.delete()
+            except:
+                pass
+
+            # Определим в какой топик перенести
+            thread_id = TOPICS.get(status.lower())
+            if thread_id:
+                text = f"📌 Обращение #{row_index}\nСтатус: {status}"
                 keyboard = [
                     [
-                        InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
-                        InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+                        InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
                     ]
                 ]
-                if user_id:
-                    keyboard[0].append(InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}"))
-
-                await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
-                await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
-            else:
-                await query.edit_message_reply_markup(None)
-                await query.message.reply_text(f"✅ Статус обновлён: {status}")
+                await context.bot.send_message(
+                    chat_id=MODERATOR_CHAT_ID,
+                    message_thread_id=thread_id,
+                    text=text,
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
 
         elif data.startswith("replyto:"):
             user_id = data.split(":")[1]
@@ -96,7 +120,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         report = generate_daily_report()
-        await update.message.reply_text(report)
+        thread_id = TOPICS.get("отчеты")
+        if thread_id:
+            await context.bot.send_message(chat_id=MODERATOR_CHAT_ID, message_thread_id=thread_id, text=report)
+        else:
+            await update.message.reply_text(report)
     except Exception as e:
         await update.message.reply_text(f"Ошибка при формировании отчёта: {e}")
 
@@ -126,6 +154,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
+    app.add_handler(CommandHandler("gettopics", gettopics))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
