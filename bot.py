@@ -6,6 +6,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 
 from responses import get_auto_reply
 from utils.sheets import append_ticket, update_status
+from utils.stats import generate_daily_report
 
 TOKEN = os.environ.get("TOKEN")
 MODERATOR_CHAT_ID = os.environ.get("MODERATOR_CHAT_ID")
@@ -19,7 +20,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_message)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or update.message.text.startswith("/"):
+    if not update.message or update.message.text is None:
+        return
+
+    # Является ли сообщение командой
+    if update.message.text.strip().startswith("/"):
         return
 
     user = update.message.from_user
@@ -28,14 +33,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Добавляем тикет в таблицу и получаем номер строки
     row_index = append_ticket(user_id, username, user_message, timestamp)
-
-    # Ответ пользователю
     auto_reply = get_auto_reply(user_message)
     await update.message.reply_text(auto_reply)
 
-    # Кнопки для модератора
     keyboard = [
         [
             InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}"),
@@ -45,7 +46,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Отправляем уведомление модератору
     if MODERATOR_CHAT_ID:
         message = (
             f"<pre>📬 Новое обращение от @{username or 'пользователя'}\n\n"
@@ -64,15 +64,35 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         _, status, row = query.data.split(":")
-        update_status(int(row), status)
-        await query.edit_message_reply_markup(None)
-        await query.message.reply_text(f"✅ Статус обновлён: {status}")
+        row_index = int(row)
+        update_status(row_index, status)
+
+        if status == "в работу":
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Завершено", callback_data=f"status:готово:{row_index}"),
+                    InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+                ]
+            ]
+            await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+            await query.message.reply_text("📌 Статус обновлён: в работу. Выберите финальный статус.")
+        else:
+            await query.edit_message_reply_markup(None)
+            await query.message.reply_text(f"✅ Статус обновлён: {status}")
     except Exception as e:
         await query.message.reply_text(f"Ошибка при обновлении статуса: {e}")
+
+async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        report = generate_daily_report()
+        await update.message.reply_text(report)
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при формировании отчёта: {e}")
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("отчет", report))
     app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
     app.run_polling()
