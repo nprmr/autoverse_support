@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 from responses import get_auto_reply
@@ -55,13 +54,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     print("👤 user_id =", user_id)
     print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
-print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
     keyboard = [
         [
             InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
             InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
             InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
             InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
+        ]
+    ]
+print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
+        [
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -107,8 +109,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text = f"📌 Обращение #{row_index}\nСтатус: {status}"
     print("👤 user_id =", user_id)
     print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
-print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
     keyboard = [
+        [
+            InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
+            InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
+            InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
+            InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
+        ]
+    ]
+print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
                 await context.bot.send_message(
                     chat_id=MODERATOR_CHAT_ID,
                     message_thread_id=thread_id,
