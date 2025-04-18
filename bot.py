@@ -63,7 +63,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(auto_reply)
 
-        [
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     thread_id = TOPICS.get("новые")
