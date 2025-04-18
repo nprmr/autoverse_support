@@ -38,7 +38,7 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     TOPICS[name] = update.message.message_thread_id
     with open(TOPICS_FILE, "w") as f:
         json.dump(TOPICS, f)
-    await update.message.reply_text(f"✅ Топик "{name}" сохранён. ID: {TOPICS[name]}")
+    await update.message.reply_text(f'✅ Топик "{name}" сохранён. ID: {TOPICS[name]}')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text or update.message.text.startswith("/"):
