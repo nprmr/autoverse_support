@@ -75,6 +75,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("✅ Кнопка нажата")
+    print("📦 query.data =", query.data)
     query = update.callback_query
     await query.answer()
     try:
