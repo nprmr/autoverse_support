@@ -100,6 +100,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
             key = status.strip().lower().replace(" ", "_")
+            print("🔁 Переносим тикет")
+            print("СТАТУС:", status)
+            print("TOPICS:", TOPICS)
+            print("Ищем ключ:", key)
             thread_id = TOPICS.get(key)
             print("STATUS:", key, "| THREAD_ID:", thread_id, "| TOPICS:", TOPICS)
             if thread_id:
@@ -150,31 +154,21 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 import asyncio
 
 
-app = ApplicationBuilder().token(TOKEN).build()
-import asyncio
-asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-
-import asyncio
-import asyncio
-asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("report", report))
-app.add_handler(CommandHandler("reply", reply))
-app.add_handler(CommandHandler("settopics", settopics))
-app.add_handler(CallbackQueryHandler(button_callback))
-app.add_handler(MessageHandler(filters.TEXT, handle_message))
-
-app.run_polling()
-
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
+        app = ApplicationBuilder().token(TOKEN).build()
     import asyncio
     asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-    app.add_handler(CommandHandler("start", start))
+
+    import asyncio
+    import asyncio
+    asyncio.get_event_loop().run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
+
+        app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
     app.add_handler(CommandHandler("settopics", settopics))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
-    app.run_polling()
+        app.add_handler(CallbackQueryHandler(button_callback))
+        app.add_handler(MessageHandler(filters.TEXT, handle_message))
+
+        app.run_polling()
+
+if __name__ == "__main__":
