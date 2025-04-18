@@ -53,6 +53,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     auto_reply = get_auto_reply(user_message)
     await update.message.reply_text(auto_reply)
 
+    print("👤 user_id =", user_id)
+    print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
     keyboard = [
         [
             InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
@@ -75,9 +77,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    print("✅ Кнопка нажата")
-    print("📦 query.data =", query.data)
+    print('✅ Кнопка нажата')
+    # query уже объявлен выше
+    print('📦 query.data =', query.data)
+    # query уже объявлен выше
     await query.answer()
     try:
         data = query.data
@@ -101,7 +104,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if thread_id:
                 text = f"📌 Обращение #{row_index}\nСтатус: {status}"
-                keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
+                print("👤 user_id =", user_id)
+    print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
+    keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
                 await context.bot.send_message(
                     chat_id=MODERATOR_CHAT_ID,
                     message_thread_id=thread_id,
