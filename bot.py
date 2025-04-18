@@ -53,14 +53,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("👤 user_id =", user_id)
     print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
     keyboard = [
-        [
+    [
         InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
         InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
         InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
         InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
-        ]
     ]
-        
+]
+
     await update.message.reply_text(auto_reply)
 
         [
