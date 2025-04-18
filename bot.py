@@ -38,7 +38,7 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     TOPICS[name] = update.message.message_thread_id
     with open(TOPICS_FILE, "w") as f:
         json.dump(TOPICS, f)
-    await update.message.reply_text(f'✅ Топик "{name}" сохранён. ID: {TOPICS[name]}')
+    await update.message.reply_text(f"✅ Топик "{name}" сохранён. ID: {TOPICS[name]}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text or update.message.text.startswith("/"):
@@ -75,9 +75,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("✅ Кнопка нажата")
-    print("📦 query.data =", query.data)
-    query = update.callback_query
+    print('✅ Кнопка нажата')
+    # query уже объявлен выше
+    print('📦 query.data =', query.data)
+    # query уже объявлен выше
     await query.answer()
     try:
         data = query.data
