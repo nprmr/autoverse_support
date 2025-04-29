@@ -70,7 +70,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_text(auto_reply)
         else:
             await message.reply_text(default_reply)
-        await message.reply_text(default_reply)
 
     # Отправка тикета в топик "Новые" с кнопками "В работу" и "Отклонить"
     keyboard = [
