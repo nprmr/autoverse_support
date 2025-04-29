@@ -51,10 +51,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     append_ticket(full_name, username, user_message, timestamp)
 
-    # Ответ пользователю
-    await message.reply_text("✅ Ваше сообщение принято! Спасибо, что обратились.")
-
-    # Автоответ по смыслу
+    # Ответ пользователю (один автоответ)
     auto_reply = get_auto_reply(user_message)
     await message.reply_text(auto_reply)
 
