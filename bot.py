@@ -36,7 +36,7 @@ MODERATOR_CHAT_ID_ENV = os.environ.get("MODERATOR_CHAT_ID")
 MODERATOR_CHAT_ID = int(MODERATOR_CHAT_ID_ENV) if MODERATOR_CHAT_ID_ENV else None
 TOPICS_FILE = "topics.json"
 
-# === Хранилище текущих действий ===
+# === Хранилище текущих действий (не используется напрямую, но остаётся на будущее) ===
 CURRENTLY_REPLYING = {}  # {chat_id: user_id}
 
 # === Загрузка топиков ===
@@ -177,7 +177,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data.startswith("replyto:"):
             user_id = data.split(":")[1]
             await query.message.reply_text(f"/reply {user_id} ")
-            CURRENTLY_REPLYING[query.message.chat_id] = user_id
 
     except Exception as e:
         await query.message.reply_text(f"❌ Ошибка: {e}")
@@ -202,6 +201,7 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+
     try:
         args = context.args
         if len(args) < 2:
@@ -210,28 +210,43 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_id = int(args[0])
         text = " ".join(args[1:])
+        
+        # Отправляем ответ пользователю
         await context.bot.send_message(chat_id=user_id, text=text)
 
-        # Сохраняем, что мы только что ответили пользователю
-        CURRENTLY_REPLYING[update.effective_chat.id] = user_id
-
-        # Обновляем сообщение, добавляя кнопку "В завершённые"
+        # Если команда вызвана через "Ответить" на сообщение
         if update.message.reply_to_message:
-            message_id = update.message.reply_to_message.message_id
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ В завершённые", callback_data=f"status:готово:{message_id}:{user_id}")
-            ]])
+            target_chat_id = MODERATOR_CHAT_ID
+            target_message_id = update.message.reply_to_message.message_id
 
-            await context.bot.edit_message_reply_markup(
-                chat_id=MODERATOR_CHAT_ID,
-                message_id=message_id,
-                reply_markup=keyboard
-            )
+            # Проверяем, что мы в нужном чате и топике
+            if update.effective_chat.id != MODERATOR_CHAT_ID:
+                await update.message.reply_text("⚠️ Команду нужно использовать в модераторском чате.")
+                return
 
-        await update.message.reply_text("✅ Ответ отправлен. Нажмите 'В завершённые', чтобы закрыть обращение.")
+            try:
+                # Добавляем кнопку "✅ В завершённые"
+                keyboard = InlineKeyboardMarkup([[
+                    InlineKeyboardButton("✅ В завершённые", callback_data=f"status:готово:{target_message_id}:{user_id}")
+                ]])
+
+                await context.bot.edit_message_reply_markup(
+                    chat_id=target_chat_id,
+                    message_id=target_message_id,
+                    reply_markup=keyboard
+                )
+                await update.message.reply_text("✅ Ответ отправлен. Нажмите 'В завершённые', чтобы закрыть обращение.")
+
+            except Exception as e:
+                print(f"[ERROR] Не удалось обновить сообщение {target_message_id}: {e}")
+                await update.message.reply_text("⚠️ Не удалось обновить карточку. Возможно, она уже была удалена.")
+
+        else:
+            await update.message.reply_text("✅ Сообщение пользователю отправлено, но не найдено сообщение для обновления.")
 
     except Exception as e:
         await update.message.reply_text(f"❌ Ошибка: {e}")
+        print(f"[ERROR] При выполнении /reply: {e}")
 
 # === Запуск бота ===
 if __name__ == "__main__":
