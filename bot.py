@@ -67,11 +67,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=MODERATOR_CHAT_ID,
             message_thread_id=thread_id,
-            text=f"<pre>📬 Новое обращение от @{username}
+            text=f"<pre>📬 Новое обращение от @{username}\n\n{user_message}\n\n🕒 {timestamp}</pre>",
 
-{user_message}
-
-🕒 {timestamp}</pre>",
             parse_mode="HTML",
             reply_markup=reply_markup
         )
