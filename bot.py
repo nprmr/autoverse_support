@@ -7,6 +7,12 @@ from responses import get_auto_reply
 import os
 
 TOKEN = os.getenv("TOKEN")
+GROUP_ID = os.getenv("GROUP_ID")  # ID вашей группы
+
+TOPIC_NEW = int(os.getenv("TOPIC_NEW"))
+TOPIC_WORK = int(os.getenv("TOPIC_WORK"))
+TOPIC_DONE = int(os.getenv("TOPIC_DONE"))
+TOPIC_REJECTED = int(os.getenv("TOPIC_REJECTED"))
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -19,14 +25,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
-    chat_id = message.chat_id
 
-    # Получение текста и данных пользователя
     user_message = message.text
     username = message.from_user.username or "(не указано)"
     first_name = message.from_user.first_name or ""
     last_name = message.from_user.last_name or ""
     full_name = f"{first_name} {last_name}".strip()
+    user_id = message.from_user.id
 
     # Сохраняем тикет в Google Sheets
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -35,21 +40,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Ответ пользователю
     await message.reply_text("✅ Ваше сообщение принято! Спасибо, что обратились.")
 
-    # Автоматический ответ по смыслу
+    # Автоответ по смыслу
     auto_reply = get_auto_reply(user_message)
     await message.reply_text(auto_reply)
 
-    # Оповещение админа (если нужно, можно вставить ID админа)
-    # await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text="Новый тикет от пользователя...")
-
-    # Подготовка клавиатуры для операторов
-    keyboard = [[
-        InlineKeyboardButton("📝 Начать обработку", callback_data=f"status:v_rabote:{message.message_id}:{chat_id}")
-    ]]
+    # Отправка тикета в топик "Новые" с кнопками "В работу" и "Отклонить"
+    keyboard = [
+        [
+            InlineKeyboardButton("🛠 В работу", callback_data=f"work:{user_id}:{user_message}"),
+            InlineKeyboardButton("❌ Отклонить", callback_data=f"reject:{user_id}:{user_message}")
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    ticket_text = (
-        f"📩 Сообщение от пользователя:\n"
-        f"{message.text}\n"
+
+    await context.bot.send_message(
+        chat_id=GROUP_ID,
+        message_thread_id=TOPIC_NEW,
+        text=f"📩 Новое обращение от @{username} (ID {user_id}):\n\n{user_message}",
+        reply_markup=reply_markup
     )
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,16 +65,58 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     data = query.data.split(":")
-    if data[0] == "status" and data[1] == "v_rabote":
-        original_message_id = int(data[2])
-        user_chat_id = int(data[3])
+    action = data[0]
+    user_id = data[1]
+    user_message = data[2]
+
+    if action == "work":
+        # Перенос в "В работе" с новыми кнопками
+        keyboard = [
+            [
+                InlineKeyboardButton("✉ Ответить", callback_data=f"reply:{user_id}"),
+                InlineKeyboardButton("✅ Закрыть", callback_data=f"close:{user_id}:{user_message}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
         await context.bot.send_message(
-            chat_id=user_chat_id,
-            text="👨‍💻 Оператор начал обрабатывать ваше обращение. Ожидайте ответа."
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_WORK,
+            text=f"🛠 В работе: от @{user_id}:\n\n{user_message}",
+            reply_markup=reply_markup
         )
 
-        await query.edit_message_text("📝 Статус: В обработке")
+        await query.edit_message_text("✅ Переведено в работу")
+
+    elif action == "reject":
+        # Перенос в "Отклоненные"
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_REJECTED,
+            text=f"❌ Отклонено: от @{user_id}:\n\n{user_message}"
+        )
+        await query.edit_message_text("❌ Отклонено")
+
+    elif action == "reply":
+        # Подготовить маску ответа
+        await query.message.reply_text(f"reply {user_id} Ваш ответ...")
+
+    elif action == "close":
+        # Перенос в "Завершенные"
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_DONE,
+            text=f"✅ Завершено: от @{user_id}:\n\n{user_message}"
+        )
+        await query.edit_message_text("✅ Завершено")
+
+async def get_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    topics = await context.bot.get_forum_topic_list(chat_id=update.effective_chat.id)
+    for topic in topics:
+        await update.message.reply_text(
+            f"Топик: {topic.name}
+ID: {topic.message_thread_id}"
+        )
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
@@ -74,5 +124,8 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
+
+    # Временная команда для получения списка топиков
+    app.add_handler(CommandHandler("topics", get_topics))
 
     app.run_polling()
