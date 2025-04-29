@@ -17,8 +17,8 @@ from telegram.ext import (
 LOCK_FILE = ".bot.lock"
 
 if os.path.exists(LOCK_FILE):
-    os.remove(LOCK_FILE)
-    print("🧹 Старый lock-файл удалён")
+    print("❌ Бот уже запущен. Завершаю текущий процесс.")
+    sys.exit(1)
 
 with open(LOCK_FILE, "w") as f:
     f.write("")
@@ -98,14 +98,6 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(daily_report)
     except Exception as e:
         await update.message.reply_text(f"❌ Ошибка при формировании отчёта: {e}")
-
-
-async def topicslist(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not MODERATOR_CHAT_ID or update.effective_chat.id != MODERATOR_CHAT_ID:
-        return
-
-    pretty = json.dumps(TOPICS, indent=2, ensure_ascii=False)
-    await update.message.reply_text(f"<code>{pretty}</code>", parse_mode="HTML")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -304,11 +296,10 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
     app.add_handler(CommandHandler("settopics", settopics))
-    app.add_handler(CommandHandler("topicslist", topicslist))  # Новая команда
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Удаление вебхука при запуске
+    # Удаление вебхука перед запуском
     import asyncio
     loop = asyncio.get_event_loop()
     loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
