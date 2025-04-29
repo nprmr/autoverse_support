@@ -94,7 +94,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             thread_id = TOPICS.get(key)
 
             if thread_id:
-                text = f"📌 Обращение #{row_index}
+                text = f'📌 Обращение #{row_index}
 Статус: {status}"
                 keyboard = [[
                     InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
