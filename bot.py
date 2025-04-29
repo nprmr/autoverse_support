@@ -46,7 +46,7 @@ if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r", encoding="utf-8") as f:
         raw_topics = json.load(f)
         # Приводим все ключи к формату "v_rabote"
-        TOPICS = {k.strip().lower().replace(" ", "_"): v for k, v in raw_topics.items()}
+        TOPICS = {k.strip().lower().replace(" ", "_").replace("ё", "е"): v for k, v in raw_topics.items()}
 else:
     TOPICS = {}
 
@@ -58,7 +58,6 @@ try:
 except ImportError as e:
     print(f"[ERROR] Не удалось импортировать модули: {e}")
     sys.exit(1)
-
 
 # === Команды ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,6 +100,14 @@ async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Ошибка при формировании отчёта: {e}")
 
 
+async def topicslist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not MODERATOR_CHAT_ID or update.effective_chat.id != MODERATOR_CHAT_ID:
+        return
+
+    pretty = json.dumps(TOPICS, indent=2, ensure_ascii=False)
+    await update.message.reply_text(f"<code>{pretty}</code>", parse_mode="HTML")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
@@ -108,42 +115,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     chat_id = message.chat_id
 
+    print("[DEBUG] handle_message вызван")
+    print(f"[DEBUG] MODERATOR_CHAT_ID: {MODERATOR_CHAT_ID}")
+    print(f"[DEBUG] TOPICS: {TOPICS}")
+
     # Автоответы
     auto_response = get_auto_reply(message.text)
     if auto_response:
         await message.reply_text(auto_response)
         return
 
-    if MODERATOR_CHAT_ID:
-        try:
-            thread_id = TOPICS.get("v_rabote") or 1  # по умолчанию основной тред
-
-            keyboard = [[
-                InlineKeyboardButton("📝 Начать обработку", callback_data=f"status:v_rabote:{message.message_id}:{chat_id}")
-            ]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
-            ticket_text = (
-                f"📩 Сообщение от пользователя:\n\n"
-                f"{message.text}\n\n"
-                f"🆔 ID пользователя: {chat_id}\n"
-                f"🕒 Время: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-            )
-
-            sent_message = await context.bot.send_message(
-                chat_id=MODERATOR_CHAT_ID,
-                message_thread_id=thread_id,
-                text=ticket_text,
-                reply_markup=reply_markup
-            )
-
-            # Логируем в Google Sheets
-            append_ticket(sent_message.message_id, chat_id, message.text, "новый")
-
-        except Exception as e:
-            print(f"[ERROR] При обработке сообщения: {e}")
-    else:
+    if not MODERATOR_CHAT_ID:
         await message.reply_text("❌ MODERATOR_CHAT_ID не задан")
+        return
+
+    try:
+        thread_id = TOPICS.get("novye") or 1  # Теперь используется 'novye', а не 'v_rabote'
+        print(f"[DEBUG] Отправляем в топик 'novye' с ID: {thread_id}")
+
+        keyboard = [[
+            InlineKeyboardButton("📝 Начать обработку", callback_data=f"status:v_rabote:{message.message_id}:{chat_id}")
+        ]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        ticket_text = (
+            f"📩 Сообщение от пользователя:\n"
+            f"{message.text}\n\n"
+            f"🆔 ID пользователя: {chat_id}\n"
+            f"🕒 Время: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+
+        sent_message = await context.bot.send_message(
+            chat_id=MODERATOR_CHAT_ID,
+            message_thread_id=thread_id,
+            text=ticket_text,
+            reply_markup=reply_markup
+        )
+
+        append_ticket(sent_message.message_id, chat_id, message.text, "новый")
+
+    except Exception as e:
+        print(f"[ERROR] При обработке сообщения: {e}")
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -177,14 +189,16 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         original_text = orig_message.text or ""
 
         # Обновляем карточку, добавляя статус и новую кнопку "Готово"
-        new_text = original_text.split("\n\n📌")[0] + f"\n\n📌 Статус: готово"
+        parts = original_text.split("📌")
+        base_text = parts[0].strip()
+        new_text = f"{base_text}\n\n📌 Статус: готово"
 
         thread_id = TOPICS.get("gotovo")
         if not thread_id:
             await update.message.reply_text("❌ Топик 'gotovo' не найден. Зарегистрируйте его через `/settopics gotovo`")
             return
 
-        # Создаём новую клавиатуру
+        # Создаём новую разметку с кнопкой "Ответить"
         keyboard = [[
             InlineKeyboardButton("✅ Готово", callback_data=f"status:gotovo:{original_message_id}:{user_id}")
         ]]
@@ -243,13 +257,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             # Копируем текст сообщения
             original_text = query.message.text or ""
-            new_text = f"{original_text.split('📌')[0]}\n\n📌 Статус: {status}"
+            base_text = original_text.split("📌")[0].strip()
+            new_text = f"{base_text}\n\n📌 Статус: {status}"
 
             # Создаём новую разметку с кнопкой "Ответить"
             keyboard = [[
                 InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}:{message_id}")
             ]]
-
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             # Отправляем в новый топик
@@ -290,6 +304,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
     app.add_handler(CommandHandler("settopics", settopics))
+    app.add_handler(CommandHandler("topicslist", topicslist))  # Новая команда
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
