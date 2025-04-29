@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 from utils.sheets import append_ticket
@@ -28,7 +29,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = f"{first_name} {last_name}".strip()
 
     # Сохраняем тикет в Google Sheets
-    append_ticket([full_name, username, user_message])
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    append_ticket(full_name, username, user_message, timestamp)
 
     # Ответ пользователю
     await message.reply_text("✅ Ваше сообщение принято! Спасибо, что обратились.")
