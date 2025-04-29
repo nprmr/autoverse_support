@@ -150,9 +150,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_DONE,
-            text=f"✅ Завершено: от ID {user_id}:
+            text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}"
 
-{user_message}"
         )
 
         # Закрытие пользовательского топика, если он есть
