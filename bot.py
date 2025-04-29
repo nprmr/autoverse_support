@@ -116,8 +116,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif action == "reply":
         # Подготовить маску ответа
         await query.message.reply_text(f"reply {user_id} Ваш ответ...")
-
-      elif action == "close":
+    
+    elif action == "close":
         # Перенос в "Завершенные"
         await context.bot.send_message(
             chat_id=GROUP_ID,
