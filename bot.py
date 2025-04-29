@@ -122,6 +122,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_DONE,
+            text=f"✅ Завершено: от ID {user_id}:
+
+{user_message}"
+        )
+        await query.edit_message_text("✅ Завершено")
 
 
 async def on_startup(app):
