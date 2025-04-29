@@ -180,9 +180,7 @@ async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=TOPIC_DONE,
-                text=f"✅ Завершено: от ID {uid}:
-
-(закрыто вручную через /close)"
+                text=f"✅ Завершено: от ID {uid}:\n\n(закрыто вручную через /close)"
             )
             await context.bot.close_forum_topic(chat_id=GROUP_ID, message_thread_id=thread_id)
             del context.bot_data["user_topics"][uid]
