@@ -45,9 +45,13 @@ else:
     TOPICS = {}
 
 # === Импорты из твоих модулей ===
-from responses import get_auto_reply
-from utils.sheets import append_ticket, update_status
-from utils.stats import generate_daily_report
+try:
+    from responses import get_auto_reply
+    from utils.sheets import append_ticket, update_status
+    from utils.stats import generate_daily_report
+except ImportError as e:
+    print(f"[ERROR] Не удалось импортировать модули: {e}")
+    sys.exit(1)
 
 # === Команды ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -138,18 +142,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target_topic_key = status.strip().lower().replace(" ", "_")
             thread_id = TOPICS.get(target_topic_key)
 
-            if thread_id and MODERATOR_CHAT_ID:
-                new_text = f"{original_text}\n\n📌 Статус: {status}"
-                keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
-                reply_markup = InlineKeyboardMarkup(keyboard)
+            print(f"[DEBUG] Целевой топик: {target_topic_key}, thread_id = {thread_id}")
 
-                await context.bot.send_message(
-                    chat_id=MODERATOR_CHAT_ID,
-                    message_thread_id=thread_id,
-                    text=new_text,
-                    reply_markup=reply_markup
-                )
+            if not MODERATOR_CHAT_ID:
+                await query.message.reply_text("❌ MODERATOR_CHAT_ID не задан")
+                print("[ERROR] MODERATOR_CHAT_ID не задан")
+                return
 
+            if not thread_id:
+                await query.message.reply_text(f"❌ Не найден топик '{target_topic_key}'. Зарегистрируйте его через /settopics")
+                print(f"[ERROR] Не найден топик '{target_topic_key}'")
+                return
+
+            new_text = f"{original_text}\n\n📌 Статус: {status}"
+            keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_message(
+                chat_id=MODERATOR_CHAT_ID,
+                message_thread_id=thread_id,
+                text=new_text,
+                reply_markup=reply_markup
+            )
+
+            # Удаление старого сообщения
             try:
                 await query.message.delete()
             except Exception as e:
@@ -161,6 +177,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await query.message.reply_text(f"❌ Ошибка: {e}")
+        print(f"[ERROR] При обработке кнопки: {e}")
 
 # === Другие команды ===
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
