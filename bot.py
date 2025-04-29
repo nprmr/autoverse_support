@@ -36,10 +36,7 @@ MODERATOR_CHAT_ID_ENV = os.environ.get("MODERATOR_CHAT_ID")
 MODERATOR_CHAT_ID = int(MODERATOR_CHAT_ID_ENV) if MODERATOR_CHAT_ID_ENV else None
 TOPICS_FILE = "topics.json"
 
-# === Хранилище текущих действий (не используется напрямую, но остаётся на будущее) ===
-CURRENTLY_REPLYING = {}  # {chat_id: user_id}
-
-# === Загрузка топиков ===
+# === Хранилище топиков ===
 if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r", encoding="utf-8") as f:
         raw = json.load(f)
@@ -219,12 +216,23 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target_chat_id = MODERATOR_CHAT_ID
             target_message_id = update.message.reply_to_message.message_id
 
-            # Проверяем, что мы в нужном чате и топике
+            # Проверяем, что мы в правильном чате
             if update.effective_chat.id != MODERATOR_CHAT_ID:
                 await update.message.reply_text("⚠️ Команду нужно использовать в модераторском чате.")
                 return
 
+            # Логируем детали
+            print(f"[DEBUG] Пытаюсь обновить сообщение: {target_message_id} в чате {target_chat_id}")
+
             try:
+                # Получаем сообщение (если доступно)
+                orig_message = await context.bot.get_message(
+                    chat_id=target_chat_id,
+                    message_id=target_message_id
+                )
+
+                print(f"[DEBUG] Сообщение найдено: {orig_message.text}")
+
                 # Добавляем кнопку "✅ В завершённые"
                 keyboard = InlineKeyboardMarkup([[
                     InlineKeyboardButton("✅ В завершённые", callback_data=f"status:готово:{target_message_id}:{user_id}")
@@ -238,8 +246,8 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("✅ Ответ отправлен. Нажмите 'В завершённые', чтобы закрыть обращение.")
 
             except Exception as e:
-                print(f"[ERROR] Не удалось обновить сообщение {target_message_id}: {e}")
-                await update.message.reply_text("⚠️ Не удалось обновить карточку. Возможно, она уже была удалена.")
+                print(f"[ERROR] Не удалось получить/обновить сообщение {target_message_id}: {e}")
+                await update.message.reply_text("⚠️ Не удалось обновить карточку. Возможно, она уже была удалена или изменена.")
 
         else:
             await update.message.reply_text("✅ Сообщение пользователю отправлено, но не найдено сообщение для обновления.")
