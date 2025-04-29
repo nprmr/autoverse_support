@@ -9,13 +9,10 @@ import os
 TOKEN = os.getenv("TOKEN")
 GROUP_ID = os.getenv("GROUP_ID")  # ID вашей группы
 
-try:
-    TOPIC_NEW = int(os.getenv("TOPIC_NEW"))
-    TOPIC_WORK = int(os.getenv("TOPIC_WORK"))
-    TOPIC_DONE = int(os.getenv("TOPIC_DONE"))
-    TOPIC_REJECTED = int(os.getenv("TOPIC_REJECTED"))
-except TypeError:
-    raise RuntimeError("❌ Не установлены переменные TOPIC_NEW, TOPIC_WORK, TOPIC_DONE, TOPIC_REJECTED!")
+TOPIC_NEW = 1
+TOPIC_WORK = 2
+TOPIC_DONE = 3
+TOPIC_REJECTED = 4
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
