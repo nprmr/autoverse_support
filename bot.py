@@ -26,6 +26,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
 
+    # Проверка на команду 'reply'
+    if message.text.startswith("reply"):
+        parts = message.text.split(maxsplit=2)
+        if len(parts) >= 3:
+            target_user_id = int(parts[1])
+            reply_text = parts[2]
+            try:
+                await context.bot.send_message(chat_id=target_user_id, text=reply_text)
+                await message.reply_text("✅ Ответ отправлен пользователю!")
+            except Exception as e:
+                await message.reply_text(f"❌ Ошибка при отправке: {e}")
+        else:
+            await message.reply_text("❗ Неверный формат команды. Пример: reply 123456789 Ваш ответ")
+        return
     user_message = message.text
     username = message.from_user.username or "(не указано)"
     first_name = message.from_user.first_name or ""
@@ -82,7 +96,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_WORK,
-            text=f"🛠 В работе: от ID {user_id}:\n\n{user_message}",
+            text=f"🛠 В работе: от ID {user_id}:
+
+{user_message}",
             reply_markup=reply_markup
         )
 
@@ -93,7 +109,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_REJECTED,
-            text=f"❌ Отклонено: от ID {user_id}:\n\n{user_message}"
+            text=f"❌ Отклонено: от ID {user_id}:
+
+{user_message}"
         )
         await query.edit_message_text("❌ Отклонено")
 
@@ -106,7 +124,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_DONE,
-            text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}"
+            text=f"✅ Завершено: от ID {user_id}:
+
+{user_message}"
         )
         await query.edit_message_text("✅ Завершено")
 
