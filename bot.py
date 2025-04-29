@@ -86,7 +86,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=GROUP_ID,
         message_thread_id=thread_id,
         text=f"📩 Новое обращение от @{username} (ID {user_id}):\n\n{user_message}",
-        reply_markup=reply_markup
+        reply_markup=reply_markup if thread_id == TOPIC_NEW else None
     )
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -118,8 +118,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=topic.message_thread_id,
-                text=f"🛠 Обращение от пользователя ID {user_id}. Используйте кнопку ниже для закрытия тикета.",
-                reply_markup=close_keyboard
+                text=f"🛠 Обращение от пользователя ID {user_id}. Используйте команду /close в этом топике для его завершения."
             )
 
         thread_id = context.bot_data["user_topics"][int(user_id)]
@@ -169,6 +168,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text("✅ Завершено")
 
+async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    thread_id = update.message.message_thread_id
+    if not thread_id:
+        await update.message.reply_text("❗ Команду /close можно использовать только внутри форумного топика.")
+        return
+
+    user_topics = context.bot_data.get("user_topics", {})
+    for uid, tid in user_topics.items():
+        if tid == thread_id:
+            await context.bot.send_message(
+                chat_id=GROUP_ID,
+                message_thread_id=TOPIC_DONE,
+                text=f"✅ Завершено: от ID {uid}:
+
+(закрыто вручную через /close)"
+            )
+            await context.bot.close_forum_topic(chat_id=GROUP_ID, message_thread_id=thread_id)
+            del context.bot_data["user_topics"][uid]
+            await update.message.reply_text("✅ Топик закрыт. Пользователь уведомлён.")
+            await context.bot.send_message(chat_id=uid, text="✅ Ваше обращение закрыто. Спасибо, что обратились!")
+            return
+
+    await update.message.reply_text("❗ Этот топик не зарегистрирован как персональный. Закрытие невозможно.")
+
+
 async def on_startup(app):
     await app.bot.delete_webhook(drop_pending_updates=True)
 
@@ -176,6 +200,7 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("close", close_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
