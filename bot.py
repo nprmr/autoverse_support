@@ -116,6 +116,12 @@ async def debug_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Thread ID: {update.message.message_thread_id}"
         )
 
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.ALL, debug_message))
 
     app.run_polling()
