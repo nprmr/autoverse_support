@@ -126,6 +126,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 {user_message}"
         )
+        await query.edit_message_text("✅ Завершено")
         text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}",
 
 
