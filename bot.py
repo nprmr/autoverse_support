@@ -16,10 +16,12 @@ from telegram.ext import (
 # === Защита от дублирования инстансов ===
 LOCK_FILE = ".bot.lock"
 
+# Удаляем старый lock-файл, если он остался
 if os.path.exists(LOCK_FILE):
-    print("❌ Бот уже запущен. Завершаю текущий процесс.")
-    sys.exit(1)
+    os.remove(LOCK_FILE)
+    print("🧹 Старый lock-файл удален")
 
+# Создаем новый lock-файл
 with open(LOCK_FILE, "w") as f:
     f.write("")
 print("✅ Lock-файл создан")
@@ -46,7 +48,7 @@ if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r", encoding="utf-8") as f:
         raw_topics = json.load(f)
         # Приводим все ключи к формату "v_rabote"
-        TOPICS = {k.strip().lower().replace(" ", "_").replace("ё", "е"): v for k, v in raw_topics.items()}
+        TOPICS = {k.strip().lower().replace(" ", "_"): v for k, v in raw_topics.items()}
 else:
     TOPICS = {}
 
@@ -303,6 +305,8 @@ if __name__ == "__main__":
     import asyncio
     loop = asyncio.get_event_loop()
     loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
+    print("🧹 Вебхук удален, бот готов к запуску")
 
+    # Запуск бота
     print("🚀 Бот успешно запущен...")
     app.run_polling()
