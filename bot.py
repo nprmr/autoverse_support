@@ -96,9 +96,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_WORK,
-            text=f"🛠 В работе: от ID {user_id}:
+           text=f"🛠 В работе: от ID {user_id}:\n\n{user_message}",
 
-{user_message}",
             reply_markup=reply_markup
         )
 
@@ -109,9 +108,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_REJECTED,
-            text=f"❌ Отклонено: от ID {user_id}:
+            text=f"❌ Отклонено: от ID {user_id}:\n\n{user_message}",
 
-{user_message}"
         )
         await query.edit_message_text("❌ Отклонено")
 
@@ -128,7 +126,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 {user_message}"
         )
-        await query.edit_message_text("✅ Завершено")
+        text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}",
 
 
 async def on_startup(app):
