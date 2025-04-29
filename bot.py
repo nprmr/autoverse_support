@@ -105,6 +105,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "work":
         # Создаём топик для пользователя, если ещё не создан
         if int(user_id) not in context.bot_data["user_topics"]:
+            username = query.from_user.username or "(не указано)"
             topic = await context.bot.create_forum_topic(
                 chat_id=GROUP_ID,
                 name=f"Обращение от {user_id}"
