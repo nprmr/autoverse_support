@@ -113,8 +113,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     topics = await context.bot.get_forum_topic_list(chat_id=update.effective_chat.id)
     for topic in topics:
-        await update.message.reply_text(f"Топик: {topic.name}
-ID: {topic.message_thread_id}")
+        await update.message.reply_text(
+            f"Топик: {topic.name}
+ID: {topic.message_thread_id}"
+        )
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
