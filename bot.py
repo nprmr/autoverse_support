@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 from responses import get_auto_reply
@@ -50,35 +51,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     row_index = append_ticket(user_id, username, user_message, timestamp)
     auto_reply = get_auto_reply(user_message)
-    print("👤 user_id =", user_id)
-    print("🔘 callback_data =", f"status:в работу:{row_index}:{user_id}")
+
     keyboard = [[
         InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
         InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
         InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
         InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
     ]]
-        [
-    await update.message.reply_text(auto_reply)
-
-        [
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    await update.message.reply_text(auto_reply)
+
     thread_id = TOPICS.get("новые")
-    print("📩 Новый тикет, топик 'новые':", thread_id)
     if thread_id:
         await context.bot.send_message(
             chat_id=MODERATOR_CHAT_ID,
             message_thread_id=thread_id,
-            text=f"<pre>📬 Новое обращение от @{username}\n\n{user_message}\n\n🕒 {timestamp}</pre>",
+            text=f"<pre>📬 Новое обращение от @{username}
+
+{user_message}
+
+🕒 {timestamp}</pre>",
             parse_mode="HTML",
             reply_markup=reply_markup
         )
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    print('✅ Кнопка нажата')
-    print('📦 query.data =', query.data)
     await query.answer()
     try:
         data = query.data
@@ -88,45 +87,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row_index = int(parts[2])
             user_id = parts[3] if len(parts) > 3 else None
             update_status(row_index, status)
+
             try:
                 await query.message.delete()
             except:
                 pass
+
             key = status.strip().lower().replace(" ", "_")
             thread_id = TOPICS.get(key)
-            print("🔁 Переносим тикет, статус:", status)
-            print("🧵 TOPICS:", TOPICS)
-            print("📍 Используем ключ:", key)
+
             if thread_id:
                 text = f"📌 Обращение #{row_index}\nСтатус: {status}"
                 keyboard = [[
                     InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
                 ]]
-                await context.bot.send_message(
-                    chat_id=MODERATOR_CHAT_ID,
-                    message_thread_id=thread_id,
-                    text=text,
-                    reply_markup=InlineKeyboardMarkup(keyboard)
-                )
-        elif data.startswith("replyto:"):
-            user_id = data.split(":")[1]
-            await query.message.reply_text(f"/reply {user_id} ")
-    except Exception as e:
-        await query.message.reply_text(f"❌ Ошибка: {e}")
-
-            try:
-                await query.message.delete()
-            except:
-                pass
-
-            key = status.strip().lower().replace(" ", "_")
-            thread_id = TOPICS.get(key)
-            print("🔁 Переносим тикет, статус:", status)
-            print("🧵 TOPICS:", TOPICS)
-            print("📍 Используем ключ:", key)
-
-            if thread_id:
-                text = f"📌 Обращение #{row_index}\nСтатус: {status}"
                 await context.bot.send_message(
                     chat_id=MODERATOR_CHAT_ID,
                     message_thread_id=thread_id,
