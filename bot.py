@@ -36,6 +36,9 @@ MODERATOR_CHAT_ID_ENV = os.environ.get("MODERATOR_CHAT_ID")
 MODERATOR_CHAT_ID = int(MODERATOR_CHAT_ID_ENV) if MODERATOR_CHAT_ID_ENV else None
 TOPICS_FILE = "topics.json"
 
+# === Хранилище текущих действий ===
+CURRENTLY_REPLYING = {}  # {chat_id: user_id}
+
 # === Загрузка топиков ===
 if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r", encoding="utf-8") as f:
@@ -174,6 +177,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data.startswith("replyto:"):
             user_id = data.split(":")[1]
             await query.message.reply_text(f"/reply {user_id} ")
+            CURRENTLY_REPLYING[query.message.chat_id] = user_id
 
     except Exception as e:
         await query.message.reply_text(f"❌ Ошибка: {e}")
@@ -203,10 +207,29 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(args) < 2:
             await update.message.reply_text("Использование: /reply <user_id> <сообщение>")
             return
+
         user_id = int(args[0])
         text = " ".join(args[1:])
         await context.bot.send_message(chat_id=user_id, text=text)
-        await update.message.reply_text("✅ Ответ отправлен.")
+
+        # Сохраняем, что мы только что ответили пользователю
+        CURRENTLY_REPLYING[update.effective_chat.id] = user_id
+
+        # Обновляем сообщение, добавляя кнопку "В завершённые"
+        if update.message.reply_to_message:
+            message_id = update.message.reply_to_message.message_id
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("✅ В завершённые", callback_data=f"status:готово:{message_id}:{user_id}")
+            ]])
+
+            await context.bot.edit_message_reply_markup(
+                chat_id=MODERATOR_CHAT_ID,
+                message_id=message_id,
+                reply_markup=keyboard
+            )
+
+        await update.message.reply_text("✅ Ответ отправлен. Нажмите 'В завершённые', чтобы закрыть обращение.")
+
     except Exception as e:
         await update.message.reply_text(f"❌ Ошибка: {e}")
 
