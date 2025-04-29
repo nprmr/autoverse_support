@@ -67,7 +67,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data.split(":")
     action = data[0]
     user_id = data[1]
-    user_message = data[2]
+    user_message = data[2] if len(data) > 2 else None
 
     if action == "work":
         # Перенос в "В работе" с новыми кнопками
@@ -82,7 +82,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_WORK,
-            text=f"🛠 В работе: от @{user_id}:\n\n{user_message}",
+            text=f"🛠 В работе: от ID {user_id}:\n\n{user_message}",
             reply_markup=reply_markup
         )
 
@@ -93,7 +93,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_REJECTED,
-            text=f"❌ Отклонено: от @{user_id}:\n\n{user_message}"
+            text=f"❌ Отклонено: от ID {user_id}:\n\n{user_message}"
         )
         await query.edit_message_text("❌ Отклонено")
 
@@ -106,9 +106,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_DONE,
-            text=f"✅ Завершено: от @{user_id}:\n\n{user_message}"
+            text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}"
         )
         await query.edit_message_text("✅ Завершено")
+
 
 async def on_startup(app):
     await app.bot.delete_webhook(drop_pending_updates=True)
@@ -119,5 +120,5 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-
+    
     app.run_polling()
