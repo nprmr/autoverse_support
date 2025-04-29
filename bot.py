@@ -40,6 +40,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await message.reply_text("❗ Неверный формат команды. Пример: reply 123456789 Ваш ответ")
         return
+
+    # Если мы находимся в пользовательском топике — пересылаем в ЛС
+    if message.message_thread_id:
+        for uid, thread_id in context.bot_data.get("user_topics", {}).items():
+            if thread_id == message.message_thread_id:
+                try:
+                    await context.bot.send_message(chat_id=uid, text=message.text)
+                    await message.reply_text("✅ Ответ отправлен пользователю из их топика")
+                except Exception as e:
+                    await message.reply_text(f"❌ Ошибка при отправке: {e}")
+                return
     user_message = message.text
     username = message.from_user.username or "(не указано)"
     first_name = message.from_user.first_name or ""
@@ -68,9 +79,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+            # Если есть персональный топик — направим туда
+    thread_id = context.bot_data.get("user_topics", {}).get(user_id, TOPIC_NEW)
+
     await context.bot.send_message(
         chat_id=GROUP_ID,
-        message_thread_id=TOPIC_NEW,
+        message_thread_id=thread_id,
         text=f"📩 Новое обращение от @{username} (ID {user_id}):\n\n{user_message}",
         reply_markup=reply_markup
     )
@@ -84,7 +98,20 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = data[1]
     user_message = data[2] if len(data) > 2 else None
 
+    # Инициализация хранилища, если не существует
+    if "user_topics" not in context.bot_data:
+        context.bot_data["user_topics"] = {}
+
     if action == "work":
+        # Создаём топик для пользователя, если ещё не создан
+        if int(user_id) not in context.bot_data["user_topics"]:
+            topic = await context.bot.create_forum_topic(
+                chat_id=GROUP_ID,
+                name=f"Обращение от {user_id}"
+            )
+            context.bot_data["user_topics"][int(user_id)] = topic.message_thread_id
+
+        thread_id = context.bot_data["user_topics"][int(user_id)]
         # Перенос в "В работе" с новыми кнопками
         keyboard = [
             [
@@ -96,7 +123,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id=GROUP_ID,
-            message_thread_id=TOPIC_WORK,
+            message_thread_id=thread_id,
            text=f"🛠 В работе: от ID {user_id}:\n\n{user_message}",
 
             reply_markup=reply_markup
@@ -123,8 +150,29 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_DONE,
-            text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}"
+            text=f"✅ Завершено: от ID {user_id}:
+
+{user_message}"
         )
+
+        # Закрытие пользовательского топика, если он есть
+        if "user_topics" in context.bot_data:
+            thread_id = context.bot_data["user_topics"].get(int(user_id))
+            if thread_id:
+                try:
+                    await context.bot.close_forum_topic(
+                        chat_id=GROUP_ID,
+                        message_thread_id=thread_id
+                    )
+                    del context.bot_data["user_topics"][int(user_id)]
+                except Exception as e:
+                    await query.message.reply_text(f"⚠️ Не удалось закрыть топик: {e}")
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="✅ Ваше обращение закрыто. Спасибо, что обратились!"
+        )
+
         await query.edit_message_text("✅ Завершено")
 
 async def on_startup(app):
