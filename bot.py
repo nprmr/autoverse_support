@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,12 +12,25 @@ from telegram.ext import (
     filters,
 )
 
-# Импорты из твоих модулей
-from responses import get_auto_reply
-from utils.sheets import append_ticket, update_status
-from utils.stats import generate_daily_report
+# === Защита от повторного запуска ===
+LOCK_FILE = ".bot.lock"
 
-# === Настройки ===
+if os.path.exists(LOCK_FILE):
+    print("❌ Бот уже запущен. Завершаю текущий процесс.")
+    sys.exit(1)
+
+with open(LOCK_FILE, "w") as f:
+    f.write("")
+print("✅ Lock-файл создан")
+
+import atexit
+def remove_lock_file():
+    if os.path.exists(LOCK_FILE):
+        os.remove(LOCK_FILE)
+        print("🧹 Lock-файл удалён")
+atexit.register(remove_lock_file)
+
+# === Настройки бота ===
 TOKEN = os.environ.get("TOKEN")
 MODERATOR_CHAT_ID_ENV = os.environ.get("MODERATOR_CHAT_ID")
 MODERATOR_CHAT_ID = int(MODERATOR_CHAT_ID_ENV) if MODERATOR_CHAT_ID_ENV else None
@@ -30,8 +44,12 @@ if os.path.exists(TOPICS_FILE):
 else:
     TOPICS = {}
 
-# === Команды бота ===
+# === Импорты из твоих модулей ===
+from responses import get_auto_reply
+from utils.sheets import append_ticket, update_status
+from utils.stats import generate_daily_report
 
+# === Команды ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привет, мы команда службы поддержки AutoVerse. "
@@ -80,7 +98,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Отправляем оригинальное сообщение в топик "Новые"
     thread_id = TOPICS.get("новые")
     original_text = (
         f"📬 Новое обращение от @{username}\n\n"
@@ -99,11 +116,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"[ERROR] Не удалось отправить в топик 'Новые': {e}")
 
-    # Отвечаем пользователю
     await update.message.reply_text(auto_reply)
 
-# === Обработка нажатий на кнопки ===
-
+# === Обработка кнопок ===
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -116,27 +131,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row_index = int(parts[2])
             user_id = parts[3] if len(parts) > 3 else None
 
-            # Обновляем статус в таблице
             update_status(row_index, status)
 
-            # Получаем текст исходного сообщения
             original_text = query.message.text or ""
 
-            # Формируем ключ топика
             target_topic_key = status.strip().lower().replace(" ", "_")
             thread_id = TOPICS.get(target_topic_key)
 
             if thread_id and MODERATOR_CHAT_ID:
-                # Добавляем информацию о статусе
                 new_text = f"{original_text}\n\n📌 Статус: {status}"
-
-                # Создаём новую клавиатуру
-                keyboard = [[
-                    InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
-                ]]
+                keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
-                # Отправляем в новый топик
                 await context.bot.send_message(
                     chat_id=MODERATOR_CHAT_ID,
                     message_thread_id=thread_id,
@@ -144,7 +150,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=reply_markup
                 )
 
-            # Удаляем старое сообщение
             try:
                 await query.message.delete()
             except Exception as e:
@@ -158,7 +163,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"❌ Ошибка: {e}")
 
 # === Другие команды ===
-
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         report_text = generate_daily_report()
@@ -190,7 +194,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Ошибка: {e}")
 
 # === Запуск бота ===
-
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
 
@@ -207,5 +210,5 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
 
-    print("🚀 Бот запущен...")
+    print("🚀 Бот успешно запущен...")
     app.run_polling()
