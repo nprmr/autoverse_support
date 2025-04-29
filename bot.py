@@ -134,14 +134,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text="👨‍💻 Ваше обращение принято в работу. Ожидайте ответа от оператора."
         )
 
-        thread_id = context.bot_data["user_topics"][int(user_id)]
-
-        # Уведомление пользователя о переводе в работу
-        await context.bot.send_message(
-            chat_id=int(user_id),
-            text="👨‍💻 Ваше обращение принято в работу. Ожидайте ответа от оператора."
-        )
-
         await query.edit_message_text("✅ Переведено в работу")
 
     elif action == "reject":
