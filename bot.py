@@ -118,7 +118,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=topic.message_thread_id,
-                text=f"🛠 Обращение от пользователя ID {user_id}. Используйте команду /close в этом топике для его завершения."
+                text=f"📩 Сообщение от пользователя @{username} (ID {user_id}):
+
+{user_message}"
+            )
+
+            await context.bot.send_message(
+                chat_id=GROUP_ID,
+                message_thread_id=topic.message_thread_id,
+                text="🛠 Используйте команду /close в этом топике для его завершения."
             )
 
         thread_id = context.bot_data["user_topics"][int(user_id)]
