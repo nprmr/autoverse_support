@@ -62,12 +62,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     append_ticket(full_name, username, user_message, timestamp)
 
-    # Ответ пользователю (один автоответ)
-    auto_reply = get_auto_reply(user_message)
-    default_reply = "✅ Спасибо за сообщение! Мы всё передадим команде поддержки."
-    if auto_reply != default_reply:
-        await message.reply_text(auto_reply)
-    else:
+    # Ответ пользователю (один автоответ, только если не в работе)
+    if user_id not in context.bot_data.get("user_topics", {}):
+        auto_reply = get_auto_reply(user_message)
+        default_reply = "✅ Спасибо за сообщение! Мы всё передадим команде поддержки."
+        if auto_reply != default_reply:
+            await message.reply_text(auto_reply)
+        else:
+            await message.reply_text(default_reply)
         await message.reply_text(default_reply)
 
     # Отправка тикета в топик "Новые" с кнопками "В работу" и "Отклонить"
@@ -129,6 +131,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         thread_id = context.bot_data["user_topics"][int(user_id)]
+
+        # Уведомление пользователя о переводе в работу
+        await context.bot.send_message(
+            chat_id=int(user_id),
+            text="👨‍💻 Ваше обращение принято в работу. Ожидайте ответа от оператора."
+        )
 
         await query.edit_message_text("✅ Переведено в работу")
 
