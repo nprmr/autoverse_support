@@ -110,21 +110,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text("✅ Завершено")
 
-async def get_topics(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    topics = await context.bot.get_forum_topic_list(chat_id=update.effective_chat.id)
-    for topic in topics:
-       await update.message.reply_text(
-    f"Топик: {topic.name}\nID: {topic.message_thread_id}"
-)
+async def debug_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message and update.message.message_thread_id:
+        await update.message.reply_text(
+            f"Thread ID: {update.message.message_thread_id}"
+        )
 
-if __name__ == '__main__':
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CallbackQueryHandler(handle_callback))
-
-    # Временная команда для получения списка топиков
-    app.add_handler(CommandHandler("topics", get_topics))
+    app.add_handler(MessageHandler(filters.ALL, debug_message))
 
     app.run_polling()
