@@ -9,10 +9,10 @@ import os
 TOKEN = os.getenv("TOKEN")
 GROUP_ID = os.getenv("GROUP_ID")  # ID вашей группы
 
-TOPIC_NEW = 1
-TOPIC_WORK = 2
-TOPIC_DONE = 3
-TOPIC_REJECTED = 4
+TOPIC_NEW = 120
+TOPIC_WORK = 124
+TOPIC_DONE = 128
+TOPIC_REJECTED = 132
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
@@ -110,18 +110,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text("✅ Завершено")
 
-async def debug_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.message_thread_id:
-        await update.message.reply_text(
-            f"Thread ID: {update.message.message_thread_id}"
-        )
-
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    app.add_handler(MessageHandler(filters.ALL, debug_message))
-
+    
     app.run_polling()
