@@ -16,7 +16,7 @@ from telegram.ext import (
 # === Защита от дублирования инстансов ===
 LOCK_FILE = ".bot.lock"
 
-# Удаляем старый lock-файл, если он остался
+# Удаляем старый lock-файл, если он остался после краша
 if os.path.exists(LOCK_FILE):
     os.remove(LOCK_FILE)
     print("🧹 Старый lock-файл удален")
@@ -74,7 +74,7 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not update.message.message_thread_id:
-        await update.message.reply_text("⚠️ Команду нужно отправить внутри топика.")
+        await update.message.reply_text("⚠️ Команду нужно выполнить внутри топика.")
         return
 
     if len(context.args) != 1:
@@ -84,7 +84,7 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.args[0].strip().lower().replace(" ", "_")
     TOPICS[name] = update.message.message_thread_id
 
-    # Сохраняем в файл
+    # Сохраняем обновлённые топики
     with open(TOPICS_FILE, "w", encoding="utf-8") as f:
         json.dump({k: v for k, v in TOPICS.items()}, f, ensure_ascii=False, indent=2)
 
@@ -124,7 +124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        thread_id = TOPICS.get("novye") or 1  # Теперь используется 'novye', а не 'v_rabote'
+        thread_id = TOPICS.get("novye") or 1
         print(f"[DEBUG] Отправляем в топик 'novye' с ID: {thread_id}")
 
         keyboard = [[
@@ -149,7 +149,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         append_ticket(sent_message.message_id, chat_id, message.text, "новый")
 
     except Exception as e:
-        print(f"[ERROR] При обработке сообщения: {e}")
+        print(f"[ERROR] При обработке входящего сообщения: {e}")
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -169,12 +169,12 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Отправляем ответ пользователю
         await context.bot.send_message(chat_id=user_id, text=text)
 
-        # Проверяем, что мы в правильном чате
+        # Проверяем, что команда выполняется в модераторском чате
         if update.effective_chat.id != MODERATOR_CHAT_ID:
             await update.message.reply_text("⚠️ Эту команду можно использовать только в модераторском чате.")
             return
 
-        # Получаем исходное сообщение с тикетом
+        # Получаем исходное сообщение
         orig_message = await context.bot.get_message(
             chat_id=MODERATOR_CHAT_ID,
             message_id=original_message_id
@@ -182,7 +182,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         original_text = orig_message.text or ""
 
-        # Обновляем карточку, добавляя статус и новую кнопку "Готово"
+        # Обновляем текст карточки
         parts = original_text.split("📌")
         base_text = parts[0].strip()
         new_text = f"{base_text}\n\n📌 Статус: готово"
@@ -192,13 +192,13 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Топик 'gotovo' не найден. Зарегистрируйте его через `/settopics gotovo`")
             return
 
-        # Создаём новую разметку с кнопкой "Ответить"
+        # Кнопка "Готово"
         keyboard = [[
             InlineKeyboardButton("✅ Готово", callback_data=f"status:gotovo:{original_message_id}:{user_id}")
         ]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Отправляем в новый топик
+        # Отправляем в топик "готово"
         await context.bot.send_message(
             chat_id=MODERATOR_CHAT_ID,
             message_thread_id=thread_id,
@@ -249,12 +249,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.message.reply_text(f"❌ Не найден топик '{target_topic_key}'. Зарегистрируйте его через /settopics")
                 return
 
-            # Копируем текст сообщения
+            # Разбираем текст сообщения
             original_text = query.message.text or ""
             base_text = original_text.split("📌")[0].strip()
             new_text = f"{base_text}\n\n📌 Статус: {status}"
 
-            # Создаём новую разметку с кнопкой "Ответить"
+            # Добавляем кнопку "Ответить"
             keyboard = [[
                 InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}:{message_id}")
             ]]
@@ -282,7 +282,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id = parts[1]
             original_message_id = parts[2]
 
-            # Добавляем текст для отправки ответа
+            # Подготавливаем команду для ответа
             await query.message.reply_text(f"/reply {user_id} {original_message_id} ")
 
     except Exception as e:
@@ -294,6 +294,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Регистрация команд
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(CommandHandler("reply", reply))
@@ -307,6 +308,5 @@ if __name__ == "__main__":
     loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
     print("🧹 Вебхук удален, бот готов к запуску")
 
-    # Запуск бота
     print("🚀 Бот успешно запущен...")
     app.run_polling()
