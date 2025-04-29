@@ -1,0 +1,63 @@
+# === Python ===
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.db
+*.sqlite3
+*.log
+*.pot
+
+# === Виртуальное окружение ===
+venv/
+env/
+virtualenv/
+.pyenv/
+env.bak
+ENV/
+.env
+.env.*
+.venv
+.venv.*
+*.env
+*.venv
+*.swp
+
+# === Переменные окружения (локальные копии) ===
+.env.local
+.env.development
+.env.development.local
+.env.save
+.env.bak
+
+# === Системные и временные файлы ===
+.bot.lock
+.lock
+*.lock
+*.sock
+*.pid
+.DS_Store
+Thumbs.db
+.cache/
+temp/
+tmp/
+
+# === Логи и отчёты ===
+logs/
+reports/
+*.log
+output.txt
+debug.log
+error.log
+
+# === IDE / Редакторы ===
+.idea/
+.vscode/
+*.iml
+*.sln
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+.#*
