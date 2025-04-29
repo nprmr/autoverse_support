@@ -7,7 +7,7 @@ from responses import get_auto_reply
 import os
 
 TOKEN = os.getenv("TOKEN")
-GROUP_ID = os.getenv("GROUP_ID")  # ID вашей группы
+GROUP_ID = int(os.getenv("GROUP_ID"))  # ID вашей группы
 
 TOPIC_NEW = 120
 TOPIC_WORK = 124
