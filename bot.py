@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from datetime import datetime
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -9,10 +10,10 @@ from telegram.ext import (
     MessageHandler,
     CallbackQueryHandler,
     ContextTypes,
-    filters,
+    filters
 )
 
-# === Защита от повторного запуска ===
+# === Защита от дублирования инстансов ===
 LOCK_FILE = ".bot.lock"
 
 if os.path.exists(LOCK_FILE):
@@ -36,11 +37,12 @@ MODERATOR_CHAT_ID_ENV = os.environ.get("MODERATOR_CHAT_ID")
 MODERATOR_CHAT_ID = int(MODERATOR_CHAT_ID_ENV) if MODERATOR_CHAT_ID_ENV else None
 TOPICS_FILE = "topics.json"
 
-# === Хранилище топиков ===
+# === Загрузка топиков из файла ===
 if os.path.exists(TOPICS_FILE):
     with open(TOPICS_FILE, "r", encoding="utf-8") as f:
-        raw = json.load(f)
-        TOPICS = {k.strip().lower().replace(" ", "_"): v for k, v in raw.items()}
+        raw_topics = json.load(f)
+        # Приводим все ключи к формату "в_работе"
+        TOPICS = {k.strip().lower().replace(" ", "_"): v for k, v in raw_topics.items()}
 else:
     TOPICS = {}
 
@@ -75,89 +77,69 @@ async def settopics(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.args[0].strip().lower().replace(" ", "_")
     TOPICS[name] = update.message.message_thread_id
 
-    with open(TOPICS_FILE, "w", encoding="utf-8") as f:
-        json.dump(TOPICS, f, ensure_ascii=False, indent=2)
+    with open(TOPICS_FILE, "w", encoding="utf-8") как обычно, но после ответа она должна меняться на «✅ В завершённые»
 
-    await update.message.reply_text(f'✅ Топик "{name}" сохранён. ID: {TOPICS[name]}')
+            elif data.startswith("replyto:"):
+                parts = data.split(":")
+                if len(parts) < 3:
+                    await query.message.reply_text("⚠️ Неверный формат данных кнопки.")
+                    return
+                user_id = parts[1]
+                original_message_id = parts[2]
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text or update.message.text.startswith("/"):
-        return
+                # Добавляем текст для отправки ответа
+                await query.message.reply_text(f"/reply {user_id} {original_message_id} ")
 
-    user = update.message.from_user
-    user_id = user.id
-    username = user.username or f"{user.first_name or ''} {user.last_name or ''}".strip()
-    user_message = update.message.text
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    row_index = append_ticket(user_id, username, user_message, timestamp)
-    auto_reply = get_auto_reply(user_message)
-
-    # Кнопки действий
-    keyboard = [[
-        InlineKeyboardButton("🛠 В работу", callback_data=f"status:в работу:{row_index}:{user_id}"),
-        InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{row_index}"),
-        InlineKeyboardButton("❌ Отклонено", callback_data=f"status:отклонено:{row_index}"),
-        InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")
-    ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    thread_id = TOPICS.get("новые")
-    original_text = (
-        f"📬 Новое обращение от @{username}\n\n"
-        f"{user_message}\n\n"
-        f"🕒 {timestamp}"
-    )
-
-    if thread_id and MODERATOR_CHAT_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=MODERATOR_CHAT_ID,
-                message_thread_id=thread_id,
-                text=original_text,
-                reply_markup=reply_markup
-            )
         except Exception as e:
-            print(f"[ERROR] Не удалось отправить в топик 'Новые': {e}")
+            await query.message.reply_text(f"❌ Ошибка: {e}")
+            print(f"[ERROR] При обработке кнопки: {e}")
 
-    await update.message.reply_text(auto_reply)
+    async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-# === Обработка кнопок ===
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+        if not update.message:
+            return
 
-    try:
-        data = query.data
-        if data.startswith("status:"):
-            parts = data.split(":")
-            status = parts[1]
-            row_index = int(parts[2])
-            user_id = parts[3] if len(parts) > 3 else None
-
-            update_status(row_index, status)
-
-            original_text = query.message.text or ""
-
-            target_topic_key = status.strip().lower().replace(" ", "_")
-            thread_id = TOPICS.get(target_topic_key)
-
-            print(f"[DEBUG] Целевой топик: {target_topic_key}, thread_id = {thread_id}")
-
-            if not MODERATOR_CHAT_ID:
-                await query.message.reply_text("❌ MODERATOR_CHAT_ID не задан")
-                print("[ERROR] MODERATOR_CHAT_ID не задан")
+        try:
+            args = context.args
+            if len(args) < 3:
+                await update.message.reply_text("Использование: /reply <user_id> <message_id> <сообщение>")
                 return
 
+            user_id = int(args[0])
+            original_message_id = int(args[1])
+            text = " ".join(args[2:])
+
+            # Отправляем ответ пользователю
+            await context.bot.send_message(chat_id=user_id, text=text)
+
+            # Проверяем, что мы в правильном чате
+            if update.effective_chat.id != MODERATOR_CHAT_ID:
+                await update.message.reply_text("⚠️ Эту команду можно использовать только в модераторском чате.")
+                return
+
+            # Получаем исходное сообщение с тикетом
+            orig_message = await context.bot.get_message(
+                chat_id=MODERATOR_CHAT_ID,
+                message_id=original_message_id
+            )
+
+            original_text = orig_message.text or ""
+
+            # Обновляем карточку, добавляя статус и новую кнопку "Готово"
+            new_text = original_text.split("\n\n📌")[0] + f"\n\n📌 Статус: готово"
+
+            thread_id = TOPICS.get("готово")
             if not thread_id:
-                await query.message.reply_text(f"❌ Не найден топик '{target_topic_key}'. Зарегистрируйте его через /settopics")
-                print(f"[ERROR] Не найден топик '{target_topic_key}'")
+                await update.message.reply_text("❌ Топик 'готово' не найден. Зарегистрируйте его через `/settopics готово`")
                 return
 
-            new_text = f"{original_text}\n\n📌 Статус: {status}"
-            keyboard = [[InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}")]]
+            # Создаём новую клавиатуру
+            keyboard = [[
+                InlineKeyboardButton("✅ Готово", callback_data=f"status:готово:{original_message_id}:{user_id}")
+            ]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
+            # Отправляем в новый топик
             await context.bot.send_message(
                 chat_id=MODERATOR_CHAT_ID,
                 message_thread_id=thread_id,
@@ -165,113 +147,97 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup
             )
 
-            # Удаление старого сообщения
+            # Удаляем старое сообщение
             try:
-                await query.message.delete()
+                await orig_message.delete()
             except Exception as e:
                 print(f"[WARNING] Не удалось удалить сообщение: {e}")
 
-        elif data.startswith("replyto:"):
-            user_id = data.split(":")[1]
-            await query.message.reply_text(f"/reply {user_id} ")
+            await update.message.reply_text("✅ Сообщение отправлено пользователю и тикет перенесён в топик 'готово'.")
 
-    except Exception as e:
-        await query.message.reply_text(f"❌ Ошибка: {e}")
-        print(f"[ERROR] При обработке кнопки: {e}")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка при выполнении /reply: {e}")
+            print(f"[ERROR] При выполнении /reply: {e}")
 
-# === Другие команды ===
-async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        report_text = generate_daily_report()
-        thread_id = TOPICS.get("отчеты")
-        if thread_id and MODERATOR_CHAT_ID:
-            await context.bot.send_message(
-                chat_id=MODERATOR_CHAT_ID,
-                message_thread_id=thread_id,
-                text=report_text
-            )
-        else:
-            await update.message.reply_text(report_text)
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при формировании отчёта: {e}")
+    # === Обработка кнопок (статусы) ===
+    async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        await query.answer()
 
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
+        try:
+            data = query.data
+            if data.startswith("status:"):
+                parts = data.split(":")
+                status = parts[1]
+                message_id = int(parts[2])
+                user_id = parts[3] if len(parts) > 3 else None
 
-    try:
-        args = context.args
-        if len(args) < 2:
-            await update.message.reply_text("Использование: /reply <user_id> <сообщение>")
-            return
+                # Обновляем статус в Google Sheets
+                update_status(message_id, status)
 
-        user_id = int(args[0])
-        text = " ".join(args[1:])
-        
-        # Отправляем ответ пользователю
-        await context.bot.send_message(chat_id=user_id, text=text)
+                # Формируем ключ топика
+                target_topic_key = status.strip().lower().replace(" ", "_")
+                thread_id = TOPICS.get(target_topic_key)
 
-        # Если команда вызвана через "Ответить" на сообщение
-        if update.message.reply_to_message:
-            target_chat_id = MODERATOR_CHAT_ID
-            target_message_id = update.message.reply_to_message.message_id
+                print(f"[DEBUG] Целевой топик: {target_topic_key}, ID: {thread_id}")
 
-            # Проверяем, что мы в правильном чате
-            if update.effective_chat.id != MODERATOR_CHAT_ID:
-                await update.message.reply_text("⚠️ Команду нужно использовать в модераторском чате.")
-                return
+                if not MODERATOR_CHAT_ID:
+                    await query.message.reply_text("❌ MODERATOR_CHAT_ID не задан")
+                    return
 
-            # Логируем детали
-            print(f"[DEBUG] Пытаюсь обновить сообщение: {target_message_id} в чате {target_chat_id}")
+                if not thread_id:
+                    await query.message.reply_text(f"❌ Не найден топик '{target_topic_key}'. Зарегистрируйте его через /settopics")
+                    return
 
-            try:
-                # Получаем сообщение (если доступно)
-                orig_message = await context.bot.get_message(
-                    chat_id=target_chat_id,
-                    message_id=target_message_id
+                # Копируем текст сообщения
+                original_text = query.message.text or ""
+                new_text = f"{original_text.split('📌')[0]}\n\n📌 Статус: {status}"
+
+                # Создаём новую разметку с кнопкой "Ответить"
+                keyboard = [[
+                    InlineKeyboardButton("📝 Ответить", callback_data=f"replyto:{user_id}:{message_id}")
+                ]]
+
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                # Отправляем в новый топик
+                await context.bot.send_message(
+                    chat_id=MODERATOR_CHAT_ID,
+                    message_thread_id=thread_id,
+                    text=new_text,
+                    reply_markup=reply_markup
                 )
 
-                print(f"[DEBUG] Сообщение найдено: {orig_message.text}")
+                # Удаляем старое сообщение
+                try:
+                    await query.message.delete()
+                except Exception as e:
+                    print(f"[WARNING] Не удалось удалить сообщение: {e}")
 
-                # Добавляем кнопку "✅ В завершённые"
-                keyboard = InlineKeyboardMarkup([[
-                    InlineKeyboardButton("✅ В завершённые", callback_data=f"status:готово:{target_message_id}:{user_id}")
-                ]])
+            elif data.startswith("replyto:"):
+                user_id = data.split(":")[1]
+                original_message_id = data.split(":")[2]
+                await query.message.reply_text(f"/reply {user_id} {original_message_id} ")
 
-                await context.bot.edit_message_reply_markup(
-                    chat_id=target_chat_id,
-                    message_id=target_message_id,
-                    reply_markup=keyboard
-                )
-                await update.message.reply_text("✅ Ответ отправлен. Нажмите 'В завершённые', чтобы закрыть обращение.")
+        except Exception as e:
+            await query.message.reply_text(f"❌ Ошибка: {e}")
+            print(f"[ERROR] При обработке кнопки: {e}")
 
-            except Exception as e:
-                print(f"[ERROR] Не удалось получить/обновить сообщение {target_message_id}: {e}")
-                await update.message.reply_text("⚠️ Не удалось обновить карточку. Возможно, она уже была удалена или изменена.")
+    # === Запуск бота ===
+    if __name__ == "__main__":
+        app = ApplicationBuilder().token(TOKEN).build()
 
-        else:
-            await update.message.reply_text("✅ Сообщение пользователю отправлено, но не найдено сообщение для обновления.")
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("report", report))
+        app.add_handler(CommandHandler("reply", reply))
+        app.add_handler(CommandHandler("settopics", settopics))
+        app.add_handler(CallbackQueryHandler(button_callback))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка: {e}")
-        print(f"[ERROR] При выполнении /reply: {e}")
+        # Удаление вебхука при запуске
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
 
-# === Запуск бота ===
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    # Регистрация обработчиков
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("report", report))
-    app.add_handler(CommandHandler("reply", reply))
-    app.add_handler(CommandHandler("settopics", settopics))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    # Очистка предыдущих обновлений
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-
-    print("🚀 Бот успешно запущен...")
-    app.run_polling()
+        print("🚀 Бот успешно запущен...")
+        app.run_polling()
