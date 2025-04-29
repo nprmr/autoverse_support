@@ -116,7 +116,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=topic.message_thread_id,
-                text=f"📩 Сообщение от пользователя @{username} (ID {user_id}):\n\n{user_message}"
+                text=f"📩 Сообщение от пользователя, в работе у @{username} (ID {user_id}):\n\n{user_message}"
             )
 
             await context.bot.send_message(
