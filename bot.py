@@ -53,7 +53,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Ответ пользователю (один автоответ)
     auto_reply = get_auto_reply(user_message)
-    await message.reply_text(auto_reply)
+    default_reply = "✅ Спасибо за сообщение! Мы всё передадим команде поддержки."
+    if auto_reply != default_reply:
+        await message.reply_text(auto_reply)
+    else:
+        await message.reply_text(default_reply)
 
     # Отправка тикета в топик "Новые" с кнопками "В работу" и "Отклонить"
     keyboard = [
