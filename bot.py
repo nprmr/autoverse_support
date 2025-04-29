@@ -117,17 +117,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Подготовить маску ответа
         await query.message.reply_text(f"reply {user_id} Ваш ответ...")
 
-    elif action == "close":
-        # Перенос в "Завершенные"
-        await context.bot.send_message(
-            chat_id=GROUP_ID,
-            message_thread_id=TOPIC_DONE,
-            text=f"✅ Завершено: от ID {user_id}:
-
-{user_message}"
-        )
-        await query.edit_message_text("✅ Завершено")
-
+   elif action == "close":
+    # Перенос в "Завершенные"
+    await context.bot.send_message(
+        chat_id=GROUP_ID,
+        message_thread_id=TOPIC_DONE,
+        text=f"✅ Завершено: от ID {user_id}:\n\n{user_message}"
+    )
+    await query.edit_message_text("✅ Завершено")
 
 async def on_startup(app):
     await app.bot.delete_webhook(drop_pending_updates=True)
