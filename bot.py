@@ -17,8 +17,8 @@ from telegram.ext import (
 LOCK_FILE = ".bot.lock"
 
 if os.path.exists(LOCK_FILE):
-    print("❌ Бот уже запущен. Завершаю текущий процесс.")
-    sys.exit(1)
+    os.remove(LOCK_FILE)
+    print("🧹 Старый lock-файл удалён")
 
 with open(LOCK_FILE, "w") as f:
     f.write("")
