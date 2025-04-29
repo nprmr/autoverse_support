@@ -110,16 +110,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await query.edit_message_text("✅ Завершено")
 
+async def on_startup(app):
+    await app.bot.delete_webhook(drop_pending_updates=True)
+
 if __name__ == '__main__':
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
-    import asyncio
-    async def start_bot():
-        await app.bot.delete_webhook(drop_pending_updates=True)
-        await app.run_polling()
-
-    asyncio.run(start_bot())
+    app.run_polling()
