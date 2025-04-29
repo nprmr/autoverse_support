@@ -114,21 +114,27 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             context.bot_data["user_topics"][int(user_id)] = topic.message_thread_id
 
-            # Отправляем закреплённую кнопку "Закрыть"
-            close_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Закрыть", callback_data=f"close:{user_id}:{user_message}")]
-            ])
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=topic.message_thread_id,
-                text=f"📩 Сообщение от пользователя @{username} (ID {user_id}):\n\n{user_message}"
+                text=f"📩 Сообщение от пользователя @{username} (ID {user_id}):
 
+{user_message}"
             )
+
             await context.bot.send_message(
                 chat_id=GROUP_ID,
                 message_thread_id=topic.message_thread_id,
                 text="🛠 Используйте команду /close в этом топике для его завершения."
             )
+
+        thread_id = context.bot_data["user_topics"][int(user_id)]
+
+        # Уведомление пользователя о переводе в работу
+        await context.bot.send_message(
+            chat_id=int(user_id),
+            text="👨‍💻 Ваше обращение принято в работу. Ожидайте ответа от оператора."
+        )
 
         thread_id = context.bot_data["user_topics"][int(user_id)]
 
