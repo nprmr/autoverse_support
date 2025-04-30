@@ -201,8 +201,14 @@ async def close_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❗ Этот топик не зарегистрирован как персональный. Закрытие невозможно.")
 
 
+from telegram import BotCommand
+
 async def on_startup(app):
     await app.bot.delete_webhook(drop_pending_updates=True)
+
+    await app.bot.set_my_commands([
+        BotCommand("close", "Закрыть обращение (внутри персонального топика)")
+    ])
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
