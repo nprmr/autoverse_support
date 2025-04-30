@@ -206,9 +206,12 @@ from telegram import BotCommand
 async def on_startup(app):
     await app.bot.delete_webhook(drop_pending_updates=True)
 
-    await app.bot.set_my_commands([
-        BotCommand("close", "Закрыть обращение (внутри персонального топика)")
-    ])
+    from telegram import BotCommandScopeChat
+
+    await app.bot.set_my_commands(
+        [BotCommand("close", "Закрыть обращение (внутри персонального топика)")],
+        scope=BotCommandScopeChat(chat_id=GROUP_ID)
+    )
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TOKEN).post_init(on_startup).build()
